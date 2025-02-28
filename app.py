@@ -3,7 +3,7 @@ import yfinance as yf
 import pandas as pd
 import numpy as np
 import requests
-import talib
+import ta  # Using ta instead of TA-Lib
 from vaderSentiment.vaderSentiment import SentimentIntensityAnalyzer
 from prophet import Prophet
 import tensorflow as tf
@@ -15,13 +15,12 @@ def get_stock_data(ticker, start, end):
     stock = yf.download(ticker, start=start, end=end)
     return add_technical_indicators(stock)
 
-# Function to add technical indicators using TA-Lib
+# Function to add technical indicators using `ta`
 def add_technical_indicators(df):
-    df['SMA_50'] = talib.SMA(df['Close'], timeperiod=50)
-    df['SMA_200'] = talib.SMA(df['Close'], timeperiod=200)
-    df['RSI'] = talib.RSI(df['Close'], timeperiod=14)
-    macd, macdsignal, macdhist = talib.MACD(df['Close'])
-    df['MACD'] = macd
+    df['SMA_50'] = ta.trend.sma_indicator(df['Close'], window=50)
+    df['SMA_200'] = ta.trend.sma_indicator(df['Close'], window=200)
+    df['RSI'] = ta.momentum.rsi(df['Close'], window=14)
+    df['MACD'] = ta.trend.macd(df['Close'])
     return df
 
 # Function to fetch market sentiment from news
