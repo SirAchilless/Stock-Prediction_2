@@ -1,48 +1,47 @@
 import streamlit as st
 import yfinance as yf
 import pandas as pd
-import numpy as np
 import ta
 import datetime
 
-# Function to get stock data from Yahoo Finance (Last 1 Year)
+# Function to fetch stock data from Yahoo Finance (Last 1 Year)
 def get_stock_data(ticker):
     end = datetime.date.today()
     start = end - datetime.timedelta(days=365)  # 1 year back
 
     stock = yf.download(ticker, start=start, end=end)
 
-    if stock.empty:
-        st.error("❌ No stock data found. Please check the ticker symbol.")
+    if stock.empty or 'Close' not in stock.columns:
+        st.error("❌ No valid stock data found. Please check the ticker symbol.")
         return None  
 
-    stock = stock.fillna(method="ffill").dropna()  # Fill missing values and remove any remaining NaN
     return add_technical_indicators(stock)
 
 # Function to add technical indicators
 def add_technical_indicators(df):
-    df = df.copy()
-    
-    # Ensure 'Close' column exists and has valid data
-    if 'Close' not in df.columns or df['Close'].dropna().empty:
-        st.error("❌ Error: 'Close' price data is missing or invalid.")
+    if not isinstance(df, pd.DataFrame) or df.empty:
+        st.error("❌ DataFrame is empty or invalid.")
         return None  
     
-    # Convert 'Close' column to numeric (handles any data type issues)
+    if 'Close' not in df.columns:
+        st.error("❌ 'Close' price column is missing.")
+        return None  
+
+    df = df.copy()
     df['Close'] = pd.to_numeric(df['Close'], errors='coerce')
 
-    # Apply technical indicators
-    try:
-        df['SMA_50'] = ta.trend.sma_indicator(df['Close'], window=50)
-        df['SMA_200'] = ta.trend.sma_indicator(df['Close'], window=200)
-        df['RSI'] = ta.momentum.rsi(df['Close'], window=14)
-        df['MACD'] = ta.trend.macd(df['Close'])
-    except Exception as e:
-        st.error(f"❌ Error in technical indicators: {str(e)}")
-        return None
+    # Drop rows where 'Close' is NaN
+    df = df.dropna(subset=['Close'])
 
-    # Replace remaining NaN values with zero
-    df = df.fillna(0)
+    if df.empty:
+        st.error("❌ No valid closing price data available.")
+        return None  
+
+    # Apply technical indicators
+    df['SMA_50'] = ta.trend.sma_indicator(df['Close'], window=50)
+    df['SMA_200'] = ta.trend.sma_indicator(df['Close'], window=200)
+    df['RSI'] = ta.momentum.rsi(df['Close'], window=14)
+    df['MACD'] = ta.trend.macd(df['Close'])
 
     return df
 
