@@ -1,0 +1,13 @@
+streamlit
+yfinance
+prophet
+pandas-ta
+tensorflow
+keras
+vaderSentiment
+requests
+pandas
+numpy
+matplotlib
+newsapi-python
+
