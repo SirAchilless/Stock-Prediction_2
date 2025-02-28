@@ -9,6 +9,13 @@ from sklearn.preprocessing import MinMaxScaler
 from tensorflow.keras.models import Sequential
 from tensorflow.keras.layers import LSTM, Dense
 import matplotlib.pyplot as plt
+import nltk
+
+# Download NLTK corpora (required for TextBlob)
+nltk.download('punkt')
+nltk.download('averaged_perceptron_tagger')
+nltk.download('movie_reviews')
+nltk.download('wordnet')
 
 # Function to fetch real-time stock data
 def fetch_realtime_stock_data(ticker):
