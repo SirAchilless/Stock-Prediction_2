@@ -1,7 +1,7 @@
 streamlit
 yfinance
 prophet
-pandas-ta
+TA-Lib
 tensorflow
 keras
 vaderSentiment
@@ -9,5 +9,3 @@ requests
 pandas
 numpy
 matplotlib
-newsapi-python
-
