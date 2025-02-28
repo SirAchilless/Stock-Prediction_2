@@ -3,7 +3,7 @@ import yfinance as yf
 import pandas as pd
 import numpy as np
 import requests
-import ta  # Using ta instead of TA-Lib
+import ta  # Using `ta` for technical indicators
 from vaderSentiment.vaderSentiment import SentimentIntensityAnalyzer
 from prophet import Prophet
 import tensorflow as tf
@@ -13,14 +13,23 @@ from tensorflow.keras.layers import LSTM, Dense
 # Function to get stock data from Yahoo Finance
 def get_stock_data(ticker, start, end):
     stock = yf.download(ticker, start=start, end=end)
+    if stock.empty:
+        st.error("Stock data not found. Please check the ticker symbol.")
+        return None  # Prevent further errors
+
+    stock = stock.fillna(method="ffill")  # Fill missing values with the previous valid data
+    stock = stock.dropna()  # Remove any remaining NaN values
     return add_technical_indicators(stock)
 
 # Function to add technical indicators using `ta`
 def add_technical_indicators(df):
+    df = df.copy()
     df['SMA_50'] = ta.trend.sma_indicator(df['Close'], window=50)
     df['SMA_200'] = ta.trend.sma_indicator(df['Close'], window=200)
     df['RSI'] = ta.momentum.rsi(df['Close'], window=14)
     df['MACD'] = ta.trend.macd(df['Close'])
+    
+    df = df.fillna(0)  # Fill any NaN values with zero to avoid errors
     return df
 
 # Function to fetch market sentiment from news
@@ -83,20 +92,21 @@ end_date = st.date_input("End Date", pd.to_datetime("2024-01-01"))
 
 if st.button("Analyze"):
     stock_data = get_stock_data(ticker, start_date, end_date)
-    sentiment_score = fetch_news_sentiment(ticker)
     
-    prophet_forecast = train_prophet_model(stock_data)
-    lstm_model = train_lstm_model(stock_data)
-    lstm_predictions = predict_lstm(lstm_model, stock_data)
+    if stock_data is not None:
+        sentiment_score = fetch_news_sentiment(ticker)
+        prophet_forecast = train_prophet_model(stock_data)
+        lstm_model = train_lstm_model(stock_data)
+        lstm_predictions = predict_lstm(lstm_model, stock_data)
 
-    st.subheader("Prophet Prediction")
-    st.line_chart(prophet_forecast.set_index('ds')['yhat'])
+        st.subheader("Prophet Prediction")
+        st.line_chart(prophet_forecast.set_index('ds')['yhat'])
 
-    st.subheader("LSTM Prediction")
-    st.line_chart(lstm_predictions)
+        st.subheader("LSTM Prediction")
+        st.line_chart(lstm_predictions)
 
-    st.subheader("Market Sentiment Score")
-    st.write(f"Sentiment Score: {sentiment_score}")
+        st.subheader("Market Sentiment Score")
+        st.write(f"Sentiment Score: {sentiment_score}")
 
-    st.subheader("Technical Indicators")
-    st.line_chart(stock_data[['Close', 'SMA_50', 'SMA_200']])
+        st.subheader("Technical Indicators")
+        st.line_chart(stock_data[['Close', 'SMA_50', 'SMA_200']])
