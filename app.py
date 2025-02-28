@@ -3,7 +3,7 @@ import yfinance as yf
 import pandas as pd
 import numpy as np
 import requests
-import ta  # Using `ta` for technical indicators
+import ta
 from vaderSentiment.vaderSentiment import SentimentIntensityAnalyzer
 from prophet import Prophet
 import tensorflow as tf
@@ -13,75 +13,30 @@ from tensorflow.keras.layers import LSTM, Dense
 # Function to get stock data from Yahoo Finance
 def get_stock_data(ticker, start, end):
     stock = yf.download(ticker, start=start, end=end)
+    
     if stock.empty:
-        st.error("Stock data not found. Please check the ticker symbol.")
-        return None  # Prevent further errors
+        st.error("❌ Error: No stock data found. Please check the ticker symbol.")
+        return None  # Prevent further processing if no data is found
 
-    stock = stock.fillna(method="ffill")  # Fill missing values with the previous valid data
-    stock = stock.dropna()  # Remove any remaining NaN values
+    stock = stock.fillna(method="ffill").dropna()  # Fill missing values and drop any remaining NaN
     return add_technical_indicators(stock)
 
-# Function to add technical indicators using `ta`
+# Function to add technical indicators
 def add_technical_indicators(df):
     df = df.copy()
+    
+    # Ensure 'Close' column exists and has valid data
+    if 'Close' not in df.columns or df['Close'].isnull().all():
+        st.error("❌ Error: 'Close' price data is missing or invalid.")
+        return df
+
     df['SMA_50'] = ta.trend.sma_indicator(df['Close'], window=50)
     df['SMA_200'] = ta.trend.sma_indicator(df['Close'], window=200)
     df['RSI'] = ta.momentum.rsi(df['Close'], window=14)
     df['MACD'] = ta.trend.macd(df['Close'])
-    
-    df = df.fillna(0)  # Fill any NaN values with zero to avoid errors
+
+    df = df.fillna(0)  # Replace any remaining NaN values with zero
     return df
-
-# Function to fetch market sentiment from news
-def fetch_news_sentiment(query):
-    url = f"https://newsapi.org/v2/everything?q={query}&apiKey=YOUR_API_KEY"
-    response = requests.get(url).json()
-    articles = response.get('articles', [])
-
-    analyzer = SentimentIntensityAnalyzer()
-    sentiment_scores = [analyzer.polarity_scores(article['title'])['compound'] for article in articles]
-    
-    return sum(sentiment_scores) / len(sentiment_scores) if sentiment_scores else 0
-
-# Function to train Prophet model
-def train_prophet_model(df):
-    df = df.reset_index()[['Date', 'Close']]
-    df.columns = ['ds', 'y']
-    
-    model = Prophet()
-    model.fit(df)
-    
-    future = model.make_future_dataframe(periods=30)
-    forecast = model.predict(future)
-    
-    return forecast[['ds', 'yhat', 'yhat_lower', 'yhat_upper']]
-
-# Function to prepare data for LSTM
-def prepare_data(df):
-    df = df[['Close']].dropna()
-    data = df.values
-    X, y = [], []
-    for i in range(50, len(data)):
-        X.append(data[i-50:i])
-        y.append(data[i])
-    return np.array(X), np.array(y)
-
-# Function to train LSTM model
-def train_lstm_model(df):
-    X, y = prepare_data(df)
-    model = Sequential([
-        LSTM(50, activation='relu', return_sequences=True, input_shape=(X.shape[1], 1)),
-        LSTM(50, activation='relu'),
-        Dense(1)
-    ])
-    model.compile(optimizer='adam', loss='mse')
-    model.fit(X, y, epochs=10, batch_size=16, verbose=0)
-    return model
-
-# Function to predict using LSTM
-def predict_lstm(model, df):
-    X, _ = prepare_data(df)
-    return model.predict(X)
 
 # Streamlit UI
 st.title("Stock Prediction with AI & Sentiment Analysis")
@@ -94,19 +49,5 @@ if st.button("Analyze"):
     stock_data = get_stock_data(ticker, start_date, end_date)
     
     if stock_data is not None:
-        sentiment_score = fetch_news_sentiment(ticker)
-        prophet_forecast = train_prophet_model(stock_data)
-        lstm_model = train_lstm_model(stock_data)
-        lstm_predictions = predict_lstm(lstm_model, stock_data)
-
-        st.subheader("Prophet Prediction")
-        st.line_chart(prophet_forecast.set_index('ds')['yhat'])
-
-        st.subheader("LSTM Prediction")
-        st.line_chart(lstm_predictions)
-
-        st.subheader("Market Sentiment Score")
-        st.write(f"Sentiment Score: {sentiment_score}")
-
-        st.subheader("Technical Indicators")
-        st.line_chart(stock_data[['Close', 'SMA_50', 'SMA_200']])
+        st.subheader("Stock Data")
+        st.dataframe(stock_data.tail())  # Show latest stock data
