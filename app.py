@@ -2,20 +2,14 @@ import streamlit as st
 import yfinance as yf
 import pandas as pd
 import numpy as np
-import requests
 import ta
-from vaderSentiment.vaderSentiment import SentimentIntensityAnalyzer
-from prophet import Prophet
-import tensorflow as tf
-from tensorflow.keras.models import Sequential
-from tensorflow.keras.layers import LSTM, Dense
 
 # Function to get stock data from Yahoo Finance
 def get_stock_data(ticker, start, end):
     stock = yf.download(ticker, start=start, end=end)
 
     if stock.empty:
-        st.error("❌ Error: No stock data found. Please check the ticker symbol and date range.")
+        st.error("❌ No stock data found. Please check the ticker symbol and date range.")
         return None  # Prevent further processing if no data is found
 
     stock = stock.fillna(method="ffill").dropna()  # Fill missing values and remove any remaining NaN
@@ -26,21 +20,37 @@ def add_technical_indicators(df):
     df = df.copy()
     
     # Ensure DataFrame is not empty
-    if df is None or df.empty:
+    if df.empty:
         st.error("❌ Error: Stock data is empty.")
-        return None  # Return None to prevent further processing
+        return None  
 
     # Ensure 'Close' column exists and has valid data
     if 'Close' not in df.columns or df['Close'].dropna().empty:
         st.error("❌ Error: 'Close' price data is missing or invalid.")
-        return None  # Return None to prevent further errors
+        return None  
+    
+    # Convert 'Close' column to numeric (handles any data type issues)
+    df['Close'] = pd.to_numeric(df['Close'], errors='coerce')
 
-    df['SMA_50'] = ta.trend.sma_indicator(df['Close'], window=50)
-    df['SMA_200'] = ta.trend.sma_indicator(df['Close'], window=200)
-    df['RSI'] = ta.momentum.rsi(df['Close'], window=14)
-    df['MACD'] = ta.trend.macd(df['Close'])
+    # Debugging: Show first few rows before applying indicators
+    st.write("✅ Debug: Stock Data Before Indicators", df.head())
 
-    df = df.fillna(0)  # Replace any remaining NaN values with zero
+    # Apply technical indicators
+    try:
+        df['SMA_50'] = ta.trend.sma_indicator(df['Close'], window=50)
+        df['SMA_200'] = ta.trend.sma_indicator(df['Close'], window=200)
+        df['RSI'] = ta.momentum.rsi(df['Close'], window=14)
+        df['MACD'] = ta.trend.macd(df['Close'])
+    except Exception as e:
+        st.error(f"❌ Error in technical indicators: {str(e)}")
+        return None
+
+    # Replace remaining NaN values with zero
+    df = df.fillna(0)
+
+    # Debugging: Show after adding indicators
+    st.write("✅ Debug: Stock Data After Indicators", df.head())
+
     return df
 
 # Streamlit UI
