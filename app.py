@@ -16,9 +16,9 @@ def get_stock_data(ticker, start, end):
     
     if stock.empty:
         st.error("❌ Error: No stock data found. Please check the ticker symbol.")
-        return None  # Prevent further processing if no data is found
+        return None
 
-    stock = stock.fillna(method="ffill").dropna()  # Fill missing values and drop any remaining NaN
+    stock = stock.fillna(method="ffill").dropna()  # Fill missing values and remove remaining NaN
     return add_technical_indicators(stock)
 
 # Function to add technical indicators
@@ -26,7 +26,7 @@ def add_technical_indicators(df):
     df = df.copy()
     
     # Ensure 'Close' column exists and has valid data
-    if 'Close' not in df.columns or df['Close'].isnull().all():
+    if 'Close' not in df.columns or df['Close'].isnull().sum() == len(df):  
         st.error("❌ Error: 'Close' price data is missing or invalid.")
         return df
 
