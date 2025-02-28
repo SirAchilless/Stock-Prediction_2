@@ -3,8 +3,7 @@ import yfinance as yf
 import pandas as pd
 import numpy as np
 import requests
-import pandas_ta as ta
-from textblob import TextBlob
+import talib
 from vaderSentiment.vaderSentiment import SentimentIntensityAnalyzer
 from prophet import Prophet
 import tensorflow as tf
@@ -16,12 +15,13 @@ def get_stock_data(ticker, start, end):
     stock = yf.download(ticker, start=start, end=end)
     return add_technical_indicators(stock)
 
-# Function to add technical indicators
+# Function to add technical indicators using TA-Lib
 def add_technical_indicators(df):
-    df['SMA_50'] = ta.sma(df['Close'], length=50)
-    df['SMA_200'] = ta.sma(df['Close'], length=200)
-    df['RSI'] = ta.rsi(df['Close'], length=14)
-    df['MACD'] = ta.macd(df['Close'])['MACD_12_26_9']
+    df['SMA_50'] = talib.SMA(df['Close'], timeperiod=50)
+    df['SMA_200'] = talib.SMA(df['Close'], timeperiod=200)
+    df['RSI'] = talib.RSI(df['Close'], timeperiod=14)
+    macd, macdsignal, macdhist = talib.MACD(df['Close'])
+    df['MACD'] = macd
     return df
 
 # Function to fetch market sentiment from news
@@ -101,4 +101,3 @@ if st.button("Analyze"):
 
     st.subheader("Technical Indicators")
     st.line_chart(stock_data[['Close', 'SMA_50', 'SMA_200']])
-
